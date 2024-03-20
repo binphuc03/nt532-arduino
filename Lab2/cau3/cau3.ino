@@ -1,6 +1,6 @@
 #include "MQ135.h"  //Thêm thư viện
 #define PIN_MQ135 A2    //Khai báo pin nối với chân A2
-int LED = 3
+int LED = 3;
 MQ135 mq135_sensor = MQ135(PIN_MQ135);   //Khai báo đối tượng thư viện
  
 void setup() {
@@ -25,7 +25,7 @@ void loop() {
     blinkLED(1000);
   }
     // Chờ 1 giây trước khi đọc lại giá trị từ cảm biến
-  delay(1000);
+  //delay(1000);
 }
 
 // Hàm kích hoạt đèn LED với tốc độ chớp cho trước (milliseconds)

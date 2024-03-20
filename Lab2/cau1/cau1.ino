@@ -32,7 +32,7 @@ void loop()
     Serial.print(distance);
     Serial.println(" cm");
   }
-  delay(1000);
+  //delay(1000);
 }
 // Hàm kích hoạt đèn LED với tốc độ chớp cho trước (milliseconds)
 void blinkLED(int interval) {

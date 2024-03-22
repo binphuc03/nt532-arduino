@@ -14,7 +14,7 @@ void loop() {
   Serial.print("PPM: ");
   Serial.print(ppm);
   Serial.println("ppm");
-  if (ppm > 1000) {
+  if (ppm > 700) {
     // Kích hoạt đèn LED với tốc độ chớp nhanh
     blinkLED(100);
   } else if (ppm > 400) {

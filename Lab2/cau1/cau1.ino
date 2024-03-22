@@ -24,15 +24,15 @@ void loop()
   Serial.println("Out of range");
   }
   else
-  { if(distance <=40) {Serial.println("muc 1");blinkLED(100);}
-  else if(distance <= 80) {Serial.println("muc 2");blinkLED(200);}
-  else if(distance <= 120) {Serial.println("muc 3");blinkLED(300);}
-  else if(distance <= 160) {Serial.println("muc 4");blinkLED(400);}
-  else {Serial.println("muc 5");blinkLED(500);}
+  { if(distance <=20) {Serial.println("muc 1");blinkLED(100);}
+  else if(distance <= 30) {Serial.println("muc 2");blinkLED(300);}
+  else if(distance <= 40) {Serial.println("muc 3");blinkLED(500);}
+  else if(distance <= 50) {Serial.println("muc 4");blinkLED(700);}
+  else {Serial.println("muc 5");blinkLED(1000);}
     Serial.print(distance);
     Serial.println(" cm");
   }
-  //delay(1000);
+ // delay(1000);
 }
 // Hàm kích hoạt đèn LED với tốc độ chớp cho trước (milliseconds)
 void blinkLED(int interval) {

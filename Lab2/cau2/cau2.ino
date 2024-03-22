@@ -33,16 +33,19 @@ void loop()
   digitalWrite(trigPin, LOW);
   duration = pulseIn(echoPin, HIGH);
   distance = (duration/2) / 29.1;
-  if (distance >= 200 || distance <= 0)
+  if (distance >= 180 || distance <= 0)
   {
   Serial.println("Out of range");
   level=0;
   }
   else
-  { level=distance/20;
-    level=round(level);
-    Serial.print(distance);
-    Serial.println(" cm");
+  { if(distance<80)
+      {
+        level=distance/10;
+        level=round(level)+1;
+      }
+    else level=9;
+    Serial.println(level);
   }
   sevseg.setNumber(level);
   sevseg.refreshDisplay(); 

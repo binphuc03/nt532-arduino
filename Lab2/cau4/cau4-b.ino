@@ -7,7 +7,6 @@
 #define LED3 5
 
 DHT dht(DHTPIN, DHTTYPE);
-LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup() 
 {
@@ -31,8 +30,10 @@ void loop()
   int ledLevel = 0;
 
   // Check tem & hum
-  Serial.println("Temp", temperature, " - level: ", tempLevel);
-  Serial.println("Hum", humidity, " - level: ", humLevel);
+  Serial.println(temperature);
+   Serial.println(tempLevel);
+   Serial.println(humidity);
+   Serial.println(humLevel);
 /*
 Tem = 3 => level 3
 Hum = 3, tem != 3 => level 0
@@ -43,9 +44,9 @@ Tem = 0 => level 0
 */
 
   // Calculate led level
-  if (temLevel == 3) ledLevel = 3;
+  if (tempLevel == 3) ledLevel = 3;
   else if (humLevel == 3) ledLevel = 0;
-  else ledLevel = temLevel;
+  else ledLevel = tempLevel;
 
 
   // Control LEDs based on temperature and humidity levels

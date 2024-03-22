@@ -1,15 +1,16 @@
 #include <DHT.h>
 
-#define DHTPIN 2
+#define DHTPIN 5
 #define DHTTYPE DHT11
-#define LED1 3
-#define LED2 4
-#define LED3 5
+#define LED1 2
+#define LED2 3
+#define LED3 4
 
 DHT dht(DHTPIN, DHTTYPE);
 
 void setup() 
 {
+  Serial.begin(9600);
   dht.begin();
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
@@ -25,23 +26,15 @@ void loop()
   float humidity = dht.readHumidity();
 
   // Map temperature and humidity to LED brightness levels
-  int tempLevel = map(temperature, 0, 40, 0, 3);
-  int humLevel = map(humidity, 20, 80, 0, 3);
+  int tempLevel;
+  int humLevel;
+  if(temperature <= 26) tempLevel = 1;
+  else if(temperature <= 27) tempLevel =2;
+  else tempLevel = 3;
+  if (humidity <= 60) humLevel=1;
+  else if (humidity <= 70) humLevel=2;
+  else humLevel = 3;
   int ledLevel = 0;
-
-  // Check tem & hum
-  Serial.println(temperature);
-   Serial.println(tempLevel);
-   Serial.println(humidity);
-   Serial.println(humLevel);
-/*
-Tem = 3 => level 3
-Hum = 3, tem != 3 => level 0
-Tem = 1 => level 1
-Tem = 2 => level 2
-Tem = 0 => level 0
-
-*/
 
   // Calculate led level
   if (tempLevel == 3) ledLevel = 3;
@@ -78,5 +71,5 @@ Tem = 0 => level 0
       break;
   }
 
-  delay(2000); // Read data every 2 seconds
+  delay(1000); // Read data every 1 seconds
 }

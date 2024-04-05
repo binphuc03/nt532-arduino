@@ -23,7 +23,7 @@ void handleRoot() {
   content += "<p>Status: <span id='status'>" + statusMessage + "</span></p>";
   content += "<button onclick='sendData(1)' " + String(gameRunning ? "" : "disabled") + ">1</button>";
   content += "<button onclick='sendData(2)' " + String(gameRunning ? "" : "disabled") + ">2</button>";
-  content += "<button onclick='sendData(3)' " + String(gameRunning ? "" : "disabled") + ">3</button>";
+  content += "<button onclick='sendData(0)' " + String(gameRunning ? "" : "disabled") + ">0</button>";
   content += "</body></html>";
   server.send(200, "text/html", content);
 }
@@ -72,7 +72,7 @@ void setup() {
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("HTTP server started");
-
+  delay(1000);
   // Bắt đầu trò chơi
   startGame();
 }
@@ -90,29 +90,30 @@ void startGame() {                //Trạng thái bắt đầu
 
 void updateLED() {                    //Cập nhập trạng thái hiện tại
    targetLED = random(1, numLeds + 1); // Chọn ngẫu nhiên số lượng đèn target
-  int selectedLED[targetLED]; // Mảng lưu trữ các chỉ số của đèn LED được chọn
-  for (int i = 0; i < targetLED; i++) {
-    selectedLED[i] = random(0, numLeds); // Chọn ngẫu nhiên một đèn LED
-    digitalWrite(ledPins[selectedLED[i]], HIGH); // Bật đèn LED được chọn
+  int selectedLED[5]; // Mảng lưu trữ các chỉ số của đèn LED được chọn
+  for (int i = 0; i < 5; i++)
+  {
+    digitalWrite(ledPins[i], LOW);         // Tắt các đèn LED
+    selectedLED[i]=0;
   }
-  for (int i = 0; i < numLeds; i++) {
-    if (!isInArray(selectedLED, targetLED, i)) {
-      digitalWrite(ledPins[i], LOW); // Tắt các đèn LED không được chọn
-    }
+  for (int i = 0; i < targetLED; i++) {
+    int a = random(0, numLeds); // Chọn ngẫu nhiên một đèn LED
+    if(selectedLED[a]==0)  selectedLED[a]=1;else i--;// Bật đèn LED được chọn
+  }
+  for (int i = 0; i < 5; i++)
+  {
+    if(selectedLED[i]==1)
+    digitalWrite(ledPins[i], HIGH);
   }
   delay(2000); // Đợi 2 giây
+  for (int i = 0; i < 5; i++)
+  {
+    digitalWrite(ledPins[i], LOW);         // Tắt các đèn LED
+  }
+   delay(2000); // Đợi 2 giây
   if (gameRunning) {
     sendData(-1); // Gửi dữ liệu để yêu cầu người chơi chọn
   }
-}
-
-bool isInArray(int arr[], int size, int element) {
-  for (int i = 0; i < size; i++) {
-    if (arr[i] == element) {
-      return true;
-    }
-  }
-  return false;
 }
 
 void sendData(int choice) {

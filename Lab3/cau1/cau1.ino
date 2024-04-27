@@ -1,146 +1,200 @@
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
 #include <ESP8266WebServer.h>
-
-// Định nghĩa chân GPIO cho các đèn LED
-const int ledPins[] = {D1, D2, D3, D4, D5};
-const int numLeds = 5;
+#include <ArduinoJson.h>
 
 char ssid[] = "UiTiOt-E3.1";
 char password[] = "UiTiOtAP";
 
-ESP8266WebServer server(80); // Khởi tạo server HTTP trên cổng 80
+ESP8266WebServer server(80);
 
-int score = 0;            //điểm số
-int targetLED = 0;        // số đèn hiện tại
-bool gameRunning = false; //trạng thái trò chơi
+const int numLeds = 5;
+const int ledPins[] = {D3, D4, D5, D6, D7};
+bool ledStates[numLeds] = {false};
+
+int randomLedCount;
+int randomLedPositions[numLeds];
+int userScore = 0;
+bool gameActive = false;
+unsigned long gameStartTime = 0;
 
 void handleRoot() {
-  String statusMessage = gameRunning ? "Running" : "Ready";
-  String content = "<html><head><title>LED Game</title></head><body>";
-  content += "<h1>LED Game</h1>";
-  content += "<p>Score: <span id='score'>" + String(score) + "</span></p>";
-  content += "<p>Status: <span id='status'>" + statusMessage + "</span></p>";
-  content += "<button onclick='sendData(1)' " + String(gameRunning ? "" : "disabled") + ">1</button>";
-  content += "<button onclick='sendData(2)' " + String(gameRunning ? "" : "disabled") + ">2</button>";
-  content += "<button onclick='sendData(0)' " + String(gameRunning ? "" : "disabled") + ">0</button>";
-  content += "</body></html>";
-  server.send(200, "text/html", content);
+  String html = "<html><body>";
+  html += "<h1>LED Game</h1>";
+  html += "<p>Score: <span id='score'>" + String(userScore) + "</span></p>";
+  html += "<p>Game Status: <span id='gameStatus'>" + String(gameActive ? "Active" : "Inactive") + "</span></p>";
+  html += "<button onclick=\"startGame()\">Start Game</button>";
+  html += "<button onclick=\"resetGame()\">Reset Game</button>";
+  html += "<br><br>";
+  html += "<button onclick=\"buttonPress(0)\">0</button>";
+  html += "<button onclick=\"buttonPress(1)\">1</button>";
+  html += "<button onclick=\"buttonPress(2)\">2</button>";
+  html += "<script>";
+  html += "function startGame() {";
+  html += "  fetch('/start')";
+  html += "    .then(response => response.text())";
+  html += "    .then(data => {";
+  html += "      document.getElementById('gameStatus').innerText = 'Active';";
+  html += "    });";
+  html += "}";
+  html += "function resetGame() {";
+  html += "  fetch('/reset')";
+  html += "    .then(response => response.text())";
+  html += "    .then(data => {";
+  html += "      document.getElementById('gameStatus').innerText = 'Inactive';";
+  html += "      document.getElementById('score').innerText = '0';";
+  html += "    });";
+  html += "}";
+  html += "function buttonPress(buttonIndex) {";
+  html += "  fetch('/press?button=' + buttonIndex)";
+  html += "    .then(response => response.text())";
+  html += "    .then(data => {";
+  html += "      document.getElementById('score').innerText = data;";
+  html += "      if (parseInt(data) <= 0) {";
+  html += "        alert('Game Over! Your score is 0 or negative.');";
+  html += "        document.getElementById('gameStatus').innerText = 'Inactive';";
+  html += "      }";
+  html += "    });";
+  html += "}";
+  html += "</script>";
+  html += "</body></html>";
+  server.send(200, "text/html", html);
 }
 
-void handleNotFound() {
-  server.send(404, "text/plain", "Not found");         //nếu server gặp lỗi
+void handleStartGame() {
+  if (gameActive) {
+    server.send(400, "text/plain", "Game already active");
+    return;
+  }
+  Serial.println("game started");
+  gameActive = true;
+  userScore = 0;
+  randomLedCount = random(1, numLeds + 1);
+
+  for (int i = 0; i < randomLedCount; i++) {
+    randomLedPositions[i] = random(0, numLeds);
+    while(digitalRead(ledPins[randomLedPositions[i]])==HIGH) randomLedPositions[i] = random(0, numLeds);
+    digitalWrite(ledPins[randomLedPositions[i]], HIGH);
+  }
+
+  delay(2000);
+  for (int i = 0; i < numLeds; i++) {
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  gameStartTime = millis();
+  server.send(200, "text/plain", "Game started");
+}
+
+void handleResetGame() {
+  if (gameActive) {
+    server.send(400, "text/plain", "Cannot reset game while it is active");
+    return;
+  }
+  for (int i = 0; i < numLeds; i++) {
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  server.send(200, "text/plain", "Game reset");
+}
+
+void handleButtonPress() {
+  if (!gameActive) {
+    server.send(400, "text/plain", "Game not active");
+    return;
+  }
+
+  int buttonIndex = server.arg("button").toInt(); // Lấy tham số từ query string
+  if (buttonIndex < 0 || buttonIndex >= numLeds) {
+    server.send(400, "text/plain", "Invalid button index");
+    return;
+  }
+
+  if (buttonIndex == randomLedCount % 3 && millis() - gameStartTime < 2000) {
+    userScore++;
+    server.send(200, "text/plain", String(userScore)); // Trả về điểm số mới
+
+    // Tiếp tục trò chơi và hiển thị các nút mới
+    randomLedCount = random(1, numLeds + 1);
+
+    for (int i = 0; i < randomLedCount; i++) {
+      randomLedPositions[i] = random(0, numLeds);
+      while(digitalRead(ledPins[randomLedPositions[i]])==HIGH) randomLedPositions[i] = random(0, numLeds);
+      digitalWrite(ledPins[randomLedPositions[i]], HIGH);
+    }
+
+    delay(2000);
+    for (int i = 0; i < numLeds; i++) {
+      digitalWrite(ledPins[i], LOW);
+    }
+
+    gameStartTime = millis(); // Đặt lại thời gian bắt đầu của trò chơi
+  } 
+  else {
+    userScore--;
+    if (userScore <= 0) {
+      gameActive = false; // Kết thúc trò chơi nếu điểm số nhỏ hơn hoặc bằng 0
+      userScore = 0;
+    }
+    else {
+      // Tiếp tục trò chơi và hiển thị các nút mới
+      randomLedCount = random(1, numLeds + 1);
+
+      for (int i = 0; i < randomLedCount; i++) {
+        randomLedPositions[i] = random(0, numLeds);
+        while(digitalRead(ledPins[randomLedPositions[i]])==HIGH) randomLedPositions[i] = random(0, numLeds);
+        digitalWrite(ledPins[randomLedPositions[i]], HIGH);
+      }
+
+      delay(2000);
+      for (int i = 0; i < numLeds; i++) {
+        digitalWrite(ledPins[i], LOW);
+      }
+
+      gameStartTime = millis(); // Đặt lại thời gian bắt đầu của trò chơi
+    }
+    server.send(200, "text/plain", String(userScore)); // Trả về điểm số mới
+  }
 }
 
 void setup() {
-  Serial.begin(9600);
-  //khởi động ban đầu
+  Serial.begin(115200);
+
   for (int i = 0; i < numLeds; i++) {
     pinMode(ledPins[i], OUTPUT);
-    digitalWrite(ledPins[i], LOW); 
+    digitalWrite(ledPins[i], LOW);
   }
-  for (int i = 0; i < 5; i++)
-  {     
-    if(i==0) digitalWrite(ledPins[i], HIGH); 
-      else 
-        { 
-          digitalWrite(ledPins[i], HIGH); 
-          digitalWrite(ledPins[i-1], LOW); 
-        }
-        delay(200);
+
+  for (int i = 0; i < numLeds; i++) {
+    digitalWrite(ledPins[i], HIGH);
+    delay(500);
+    digitalWrite(ledPins[i], LOW);
   }
-  for (int i = 3; i >= 0; i--)
-  {
-    digitalWrite(ledPins[i], HIGH); 
-    digitalWrite(ledPins[i+1], LOW); 
-    delay(200);
+
+  for (int i = numLeds - 1; i >= 0; i--) {
+    digitalWrite(ledPins[i], HIGH);
+    delay(500);
+    digitalWrite(ledPins[i], LOW);
   }
-  digitalWrite(ledPins[0], LOW);
-    // Kết nối với Wi-Fi
+
   WiFi.begin(ssid, password);
-  
-  Serial.print("Connecting to WiFi");
+  Serial.println("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
     Serial.print(".");
-    delay(300);
   }
 
   Serial.println("\nWiFi connected");
   Serial.println("IP Address: " + WiFi.localIP().toString());
 
-  server.on("/", HTTP_GET, handleRoot);
-  server.onNotFound(handleNotFound);
+  server.on("/", handleRoot);
+  server.on("/start", handleStartGame);
+  server.on("/reset", handleResetGame);
+  server.on("/press", handleButtonPress);
+
   server.begin();
-  Serial.println("HTTP server started");
-  delay(1000);
-  // Bắt đầu trò chơi
-  startGame();
+  Serial.println("Server started");
 }
 
 void loop() {
-    // Điều khiển trò chơi 
   server.handleClient();
-}
-
-void startGame() {                //Trạng thái bắt đầu
-  score = 0;
-  gameRunning = true;
-  updateLED();
-}
-
-void updateLED() {                    //Cập nhập trạng thái hiện tại
-   targetLED = random(1, numLeds + 1); // Chọn ngẫu nhiên số lượng đèn target
-  int selectedLED[5]; // Mảng lưu trữ các chỉ số của đèn LED được chọn
-  for (int i = 0; i < 5; i++)
-  {
-    digitalWrite(ledPins[i], LOW);         // Tắt các đèn LED
-    selectedLED[i]=0;
-  }
-  for (int i = 0; i < targetLED; i++) {
-    int a = random(0, numLeds); // Chọn ngẫu nhiên một đèn LED
-    if(selectedLED[a]==0)  selectedLED[a]=1;else i--;// Bật đèn LED được chọn
-  }
-  for (int i = 0; i < 5; i++)
-  {
-    if(selectedLED[i]==1)
-    digitalWrite(ledPins[i], HIGH);
-  }
-  delay(2000); // Đợi 2 giây
-  for (int i = 0; i < 5; i++)
-  {
-    digitalWrite(ledPins[i], LOW);         // Tắt các đèn LED
-  }
-   delay(2000); // Đợi 2 giây
-  if (gameRunning) {
-    sendData(-1); // Gửi dữ liệu để yêu cầu người chơi chọn
-  }
-}
-
-void sendData(int choice) {
-  if (choice != -1 && !gameRunning) {
-    return; // Không xử lý dữ liệu nếu trò chơi không hoạt động
-  }
-
-  if (choice == targetLED % 3) {
-    score++; // Tăng điểm nếu chọn đúng
-    server.send(200, "text/plain", "Correct");
-  } else {
-    score--; // Giảm điểm nếu chọn sai
-    server.send(200, "text/plain", "Incorrect");
-  }
-
-  if (score < 0) {
-    endGame();
-  } else {
-    updateLED(); // Chuyển qua vòng tiếp theo
-  }
-}
-
-void endGame() {
-  gameRunning = false;
-  for (int i = 0; i < numLeds; i++) {
-    digitalWrite(ledPins[i], LOW); // Tắt tất cả đèn LED
-  }
-  targetLED = 0;
-  server.send(200, "text/plain", "Game Over");
 }
